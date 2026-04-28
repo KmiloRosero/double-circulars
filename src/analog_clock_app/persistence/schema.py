@@ -27,6 +27,11 @@ def _set_schema_version(conn: sqlite3.Connection, version: int) -> None:
     conn.execute("UPDATE schema_version SET version = ?", (version,))
 
 
+def _column_exists(conn: sqlite3.Connection, table: str, column: str) -> bool:
+    rows = conn.execute(f"PRAGMA table_info({table})").fetchall()
+    return any(r["name"] == column for r in rows)
+
+
 def _migration_1(conn: sqlite3.Connection) -> None:
     conn.execute(
         """
@@ -76,9 +81,8 @@ def _migration_2(conn: sqlite3.Connection) -> None:
 
 
 def _migration_3(conn: sqlite3.Connection) -> None:
-    conn.execute(
-        "ALTER TABLE app_settings ADD COLUMN timezone TEXT NOT NULL DEFAULT 'America/Bogota'"
-    )
+    if not _column_exists(conn, "app_settings", "timezone"):
+        conn.execute("ALTER TABLE app_settings ADD COLUMN timezone TEXT NOT NULL DEFAULT 'America/Bogota'")
 
 
 def _migration_4(conn: sqlite3.Connection) -> None:
@@ -111,7 +115,8 @@ def _migration_5(conn: sqlite3.Connection) -> None:
 
 
 def _migration_6(conn: sqlite3.Connection) -> None:
-    conn.execute("ALTER TABLE app_settings ADD COLUMN dark_theme INTEGER NOT NULL DEFAULT 0")
+    if not _column_exists(conn, "app_settings", "dark_theme"):
+        conn.execute("ALTER TABLE app_settings ADD COLUMN dark_theme INTEGER NOT NULL DEFAULT 0")
 
 
 def init_schema(conn: sqlite3.Connection) -> None:
