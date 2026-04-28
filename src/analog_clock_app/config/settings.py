@@ -5,6 +5,7 @@ from typing import Literal
 
 
 TimeMode = Literal["real", "simulated"]
+BackgroundMode = Literal["white", "black", "image"]
 
 
 @dataclass(slots=True)
@@ -14,6 +15,9 @@ class AppSettings:
     timezone: str = "America/Bogota"
 
     dark_theme: bool = False
+
+    background_mode: BackgroundMode = "white"
+    background_image_filename: str = ""
 
     time_mode: TimeMode = "real"
     simulation_speed: float = 1.0

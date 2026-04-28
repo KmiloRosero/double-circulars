@@ -119,6 +119,13 @@ def _migration_6(conn: sqlite3.Connection) -> None:
         conn.execute("ALTER TABLE app_settings ADD COLUMN dark_theme INTEGER NOT NULL DEFAULT 0")
 
 
+def _migration_7(conn: sqlite3.Connection) -> None:
+    if not _column_exists(conn, "app_settings", "background_mode"):
+        conn.execute("ALTER TABLE app_settings ADD COLUMN background_mode TEXT NOT NULL DEFAULT 'white'")
+    if not _column_exists(conn, "app_settings", "background_image_filename"):
+        conn.execute("ALTER TABLE app_settings ADD COLUMN background_image_filename TEXT NOT NULL DEFAULT ''")
+
+
 def init_schema(conn: sqlite3.Connection) -> None:
     _ensure_schema_version_table(conn)
     current = _get_schema_version(conn)
@@ -129,6 +136,7 @@ def init_schema(conn: sqlite3.Connection) -> None:
         (4, _migration_4),
         (5, _migration_5),
         (6, _migration_6),
+        (7, _migration_7),
     ]
     for version, migrate in migrations:
         if current < version:

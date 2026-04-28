@@ -22,7 +22,12 @@ class TestPersistenceSettingsAndPresets(unittest.TestCase):
             repo1 = CachedSettingsRepositoryProxy(SQLiteSettingsRepository(db))
             service1 = SettingsService(repo1)
             updated = service1.apply_patch(
-                SettingsPatch(time_mode="simulated", simulation_speed=2.5, time_offset_seconds=120)
+                SettingsPatch(
+                    time_mode="simulated",
+                    simulation_speed=2.5,
+                    time_offset_seconds=120,
+                    background_mode="black",
+                )
             )
             self.assertEqual(updated.time_mode, "simulated")
 
@@ -32,6 +37,7 @@ class TestPersistenceSettingsAndPresets(unittest.TestCase):
             self.assertEqual(loaded.time_mode, "simulated")
             self.assertEqual(loaded.simulation_speed, 2.5)
             self.assertEqual(loaded.time_offset_seconds, 120)
+            self.assertEqual(loaded.background_mode, "black")
 
     def test_presets_persist_and_apply(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

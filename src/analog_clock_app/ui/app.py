@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
+import time
 
 from nicegui import app, ui
 
@@ -42,6 +43,12 @@ def _default_db_path() -> str:
     data_dir = Path.cwd() / "data"
     data_dir.mkdir(parents=True, exist_ok=True)
     return str(data_dir / "app.db")
+
+
+def _uploads_dir() -> Path:
+    p = Path.cwd() / "data" / "uploads"
+    p.mkdir(parents=True, exist_ok=True)
+    return p
 
 
 def _build_facade() -> tuple[
@@ -93,13 +100,43 @@ def _top_nav() -> None:
 def run() -> None:
     facade, settings_service, preset_service, alarm_service, world_clock_service, history, presenter = _build_facade()
 
-    def _apply_theme() -> None:
+    def _apply_theme_and_background() -> None:
         settings = settings_service.get()
         dm = ui.dark_mode()
         if settings.dark_theme:
             dm.enable()
         else:
             dm.disable()
+
+        if settings.background_mode == "black":
+            js = (
+                "document.body.style.backgroundColor = '#000000';"
+                "document.body.style.backgroundImage = 'none';"
+                "document.body.style.backgroundSize = '';"
+                "document.body.style.backgroundRepeat = '';"
+                "document.body.style.backgroundPosition = '';"
+            )
+            ui.run_javascript(js)
+        elif settings.background_mode == "image" and settings.background_image_filename:
+            ts = int(time.time())
+            url = f"/userfiles/{settings.background_image_filename}?t={ts}"
+            js = (
+                "document.body.style.backgroundColor = '#000000';"
+                f"document.body.style.backgroundImage = 'url({url})';"
+                "document.body.style.backgroundSize = 'cover';"
+                "document.body.style.backgroundRepeat = 'no-repeat';"
+                "document.body.style.backgroundPosition = 'center center';"
+            )
+            ui.run_javascript(js)
+        else:
+            js = (
+                "document.body.style.backgroundColor = '#ffffff';"
+                "document.body.style.backgroundImage = 'none';"
+                "document.body.style.backgroundSize = '';"
+                "document.body.style.backgroundRepeat = '';"
+                "document.body.style.backgroundPosition = '';"
+            )
+            ui.run_javascript(js)
 
     def _top_header() -> None:
         with ui.row().classes("w-full items-center justify-between").style(
@@ -110,7 +147,7 @@ def run() -> None:
 
     @ui.page("/")
     def _single_tab_app() -> None:
-        _apply_theme()
+        _apply_theme_and_background()
         _top_header()
 
         with ui.column().style("max-width: 1200px; margin: 0 auto; padding: 16px;"):
@@ -160,7 +197,7 @@ def run() -> None:
                         settings_service=settings_service,
                         history=history,
                         presenter=presenter,
-                        on_settings_changed=_apply_theme,
+                        on_settings_changed=_apply_theme_and_background,
                     )
 
                 with ui.tab_panel("Acerca de"):
@@ -169,6 +206,8 @@ def run() -> None:
     static_dir = Path.cwd() / "static"
     if static_dir.exists():
         app.add_static_files("/static", str(static_dir), follow_symlink=True)
+
+    app.add_static_files("/userfiles", str(_uploads_dir()), follow_symlink=True)
 
     storage_secret = os.environ.get("ANALOG_CLOCK_STORAGE_SECRET", "local-dev")
     ui.run(title="Reloj Analógico", port=8080, reload=False, storage_secret=storage_secret)

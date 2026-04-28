@@ -19,7 +19,14 @@ def test_settings_persist_between_instances() -> None:
 
         repo1 = CachedSettingsRepositoryProxy(SQLiteSettingsRepository(db))
         service1 = SettingsService(repo1)
-        service1.apply_patch(SettingsPatch(time_mode="simulated", simulation_speed=2.5, time_offset_seconds=10))
+        service1.apply_patch(
+            SettingsPatch(
+                time_mode="simulated",
+                simulation_speed=2.5,
+                time_offset_seconds=10,
+                background_mode="black",
+            )
+        )
 
         repo2 = CachedSettingsRepositoryProxy(SQLiteSettingsRepository(db))
         service2 = SettingsService(repo2)
@@ -27,6 +34,7 @@ def test_settings_persist_between_instances() -> None:
         assert loaded.time_mode == "simulated"
         assert loaded.simulation_speed == 2.5
         assert loaded.time_offset_seconds == 10
+        assert loaded.background_mode == "black"
 
 
 def test_presets_persist_and_apply() -> None:
@@ -52,4 +60,3 @@ def test_presets_persist_and_apply() -> None:
         all_presets = presets_repo2.list_presets()
         assert len(all_presets) == 1
         assert all_presets[0].name == "Fast Green"
-

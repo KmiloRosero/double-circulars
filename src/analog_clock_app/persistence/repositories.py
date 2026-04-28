@@ -102,9 +102,21 @@ class SQLiteSettingsRepository(SettingsRepository):
                 dark_theme = bool(row["dark_theme"])
             except Exception:
                 dark_theme = False
+
+            try:
+                background_mode = str(row["background_mode"])
+            except Exception:
+                background_mode = "white"
+
+            try:
+                background_image_filename = str(row["background_image_filename"])
+            except Exception:
+                background_image_filename = ""
             return AppSettings(
                 timezone=timezone,
                 dark_theme=dark_theme,
+                background_mode=background_mode,  # type: ignore[arg-type]
+                background_image_filename=background_image_filename,
                 time_mode=row["time_mode"],
                 simulation_speed=float(row["simulation_speed"]),
                 time_offset_seconds=int(row["time_offset_seconds"]),
@@ -124,6 +136,8 @@ class SQLiteSettingsRepository(SettingsRepository):
                 UPDATE app_settings
                 SET timezone = :timezone,
                     dark_theme = :dark_theme,
+                    background_mode = :background_mode,
+                    background_image_filename = :background_image_filename,
                     time_mode = :time_mode,
                     simulation_speed = :simulation_speed,
                     time_offset_seconds = :time_offset_seconds,

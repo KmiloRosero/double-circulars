@@ -4,7 +4,7 @@ from dataclasses import dataclass, replace
 from typing import Optional
 
 from analog_clock_app.config.settings import AppSettings
-from analog_clock_app.config.settings import TimeMode
+from analog_clock_app.config.settings import BackgroundMode, TimeMode
 from analog_clock_app.persistence.repositories import SettingsRepository
 
 
@@ -25,6 +25,9 @@ class SettingsPatch:
     enable_center_dot_layer: Optional[bool] = None
 
     dark_theme: Optional[bool] = None
+
+    background_mode: Optional[BackgroundMode] = None
+    background_image_filename: Optional[str] = None
 
 
 class SettingsService:
@@ -71,6 +74,14 @@ class SettingsService:
                 else current.enable_center_dot_layer
             ),
             dark_theme=patch.dark_theme if patch.dark_theme is not None else current.dark_theme,
+            background_mode=(
+                patch.background_mode if patch.background_mode is not None else current.background_mode
+            ),
+            background_image_filename=(
+                patch.background_image_filename
+                if patch.background_image_filename is not None
+                else current.background_image_filename
+            ),
         )
         self.save(updated)
         return updated
