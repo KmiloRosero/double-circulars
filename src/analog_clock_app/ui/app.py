@@ -101,62 +101,70 @@ def run() -> None:
         else:
             dm.disable()
 
+    def _top_header() -> None:
+        with ui.row().classes("w-full items-center justify-between").style(
+            "padding: 12px 16px; border-bottom: 1px solid #E5E7EB;"
+        ):
+            ui.label("Reloj Analógico").style("font-weight: 700;")
+            ui.label("Pasto, Colombia").style("opacity: 0.8;")
+
     @ui.page("/")
-    def _clock() -> None:
+    def _single_tab_app() -> None:
         _apply_theme()
-        _top_nav()
-        clock_page(
-            facade=facade,
-            settings_service=settings_service,
-            preset_service=preset_service,
-            history=history,
-            presenter=presenter,
-        )
+        _top_header()
 
-    @ui.page("/alarmas")
-    def _alarms() -> None:
-        _apply_theme()
-        _top_nav()
-        alarms_page(settings_service=settings_service, alarm_service=alarm_service, history=history)
+        with ui.column().style("max-width: 1200px; margin: 0 auto; padding: 16px;"):
+            tabs = ui.tabs().classes("w-full")
+            with tabs:
+                ui.tab("Reloj")
+                ui.tab("Alarmas")
+                ui.tab("Mundial")
+                ui.tab("Cronómetro")
+                ui.tab("Temporizador")
+                ui.tab("Configuración")
+                ui.tab("Acerca de")
 
-    @ui.page("/mundial")
-    def _world() -> None:
-        _apply_theme()
-        _top_nav()
-        world_clock_page(
-            settings_service=settings_service,
-            world_clock_service=world_clock_service,
-            history=history,
-            renderer=facade.renderer,
-        )
+            with ui.tab_panels(tabs, value="Reloj").classes("w-full"):
+                with ui.tab_panel("Reloj"):
+                    clock_page(
+                        facade=facade,
+                        settings_service=settings_service,
+                        preset_service=preset_service,
+                        history=history,
+                        presenter=presenter,
+                    )
 
-    @ui.page("/cronometro")
-    def _stopwatch() -> None:
-        _apply_theme()
-        _top_nav()
-        stopwatch_page()
+                with ui.tab_panel("Alarmas"):
+                    alarms_page(
+                        settings_service=settings_service,
+                        alarm_service=alarm_service,
+                        history=history,
+                    )
 
-    @ui.page("/temporizador")
-    def _timer() -> None:
-        _apply_theme()
-        _top_nav()
-        timer_page()
+                with ui.tab_panel("Mundial"):
+                    world_clock_page(
+                        settings_service=settings_service,
+                        world_clock_service=world_clock_service,
+                        history=history,
+                        renderer=facade.renderer,
+                    )
 
-    @ui.page("/settings")
-    def _settings() -> None:
-        _apply_theme()
-        _top_nav()
-        settings_page(
-            settings_service=settings_service,
-            history=history,
-            presenter=presenter,
-        )
+                with ui.tab_panel("Cronómetro"):
+                    stopwatch_page()
 
-    @ui.page("/about")
-    def _about() -> None:
-        _apply_theme()
-        _top_nav()
-        about_page()
+                with ui.tab_panel("Temporizador"):
+                    timer_page()
+
+                with ui.tab_panel("Configuración"):
+                    settings_page(
+                        settings_service=settings_service,
+                        history=history,
+                        presenter=presenter,
+                        on_settings_changed=_apply_theme,
+                    )
+
+                with ui.tab_panel("Acerca de"):
+                    about_page()
 
     static_dir = Path.cwd() / "static"
     if static_dir.exists():

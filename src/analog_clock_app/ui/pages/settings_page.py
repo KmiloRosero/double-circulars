@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from collections.abc import Callable
+
 from nicegui import ui
 
 from analog_clock_app.services.history_service import HistoryService
@@ -7,7 +9,12 @@ from analog_clock_app.services.settings_service import SettingsPatch, SettingsSe
 from analog_clock_app.ui.presenter import ClockPresenter
 
 
-def settings_page(settings_service: SettingsService, history: HistoryService, presenter: ClockPresenter) -> None:
+def settings_page(
+    settings_service: SettingsService,
+    history: HistoryService,
+    presenter: ClockPresenter,
+    on_settings_changed: Callable[[], None] | None = None,
+) -> None:
     settings = settings_service.get()
 
     with ui.column().style("max-width: 1100px; margin: 0 auto; padding: 16px;"):
@@ -44,6 +51,8 @@ def settings_page(settings_service: SettingsService, history: HistoryService, pr
             history.record_change(before, settings, "Se actualizó la apariencia")
             preview.content = presenter.render(settings)
             render_event_log()
+            if on_settings_changed is not None:
+                on_settings_changed()
 
         def render_event_log() -> None:
             event_log.clear()
