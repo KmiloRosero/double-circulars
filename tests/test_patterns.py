@@ -2,23 +2,20 @@ import os
 import tempfile
 import unittest
 
-from datetime import datetime, timezone
-
 from analog_clock_app.config.settings import AppSettings
-from analog_clock_app.domain.clock.engine import ClockEngine
+from analog_clock_app.domain.clock.models import ClockAngles, ClockState
 from analog_clock_app.domain.time.factory import TimeSourceFactory
 from analog_clock_app.domain.time.realtime_source import RealTimeSource
 from analog_clock_app.domain.time.simulated_source import SimulatedTimeSource
 from analog_clock_app.persistence.db import Database
-from analog_clock_app.persistence.repositories import (
-    CachedSettingsRepositoryProxy,
-    SQLiteSettingsRepository,
-)
+from analog_clock_app.persistence.repositories import CachedSettingsRepositoryProxy, SQLiteSettingsRepository
+from analog_clock_app.presentation.tk_renderer import CenterDotDecorator, ShadowLayerDecorator, TkBaseClockRenderer
 from analog_clock_app.services.clock_service import ClockService
-from analog_clock_app.services.facade import ClockFacade
-from analog_clock_app.ui.presenter import ClockPresenter
-from analog_clock_app.ui.rendering.decorators import CenterDotDecorator, ShadowLayerDecorator
-from analog_clock_app.ui.rendering.svg_renderer import SvgClockRenderer
+from analog_clock_app.services.facade import AppFacade
+from analog_clock_app.services.history_service import HistoryService
+from analog_clock_app.services.preset_service import PresetService
+from analog_clock_app.services.settings_service import SettingsPatch, SettingsService
+from analog_clock_app.persistence.repositories import SQLitePresetRepository
 
 
 class TestFactoryMethod(unittest.TestCase):
@@ -50,44 +47,67 @@ class TestProxyRepository(unittest.TestCase):
             self.assertEqual(s2.simulation_speed, 2.0)
 
 
-class TestDecoratorAndBridge(unittest.TestCase):
-    def test_renderer_decorators(self) -> None:
-        engine = ClockEngine()
-        state = engine.state_from_datetime(datetime.now(timezone.utc))
+class FakeCanvas:
+    def __init__(self) -> None:
+        self.ovals: int = 0
+        self.lines: int = 0
+        self.bg: str | None = None
 
-        base = SvgClockRenderer()
+    def delete(self, tag: str) -> None:
+        return None
+
+    def configure(self, **kwargs) -> None:
+        self.bg = kwargs.get("bg", self.bg)
+
+    def create_oval(self, *args, **kwargs) -> int:
+        self.ovals += 1
+        return self.ovals
+
+    def create_line(self, *args, **kwargs) -> int:
+        self.lines += 1
+        return self.lines
+
+    def create_arc(self, *args, **kwargs) -> int:
+        return 0
+
+
+class TestDecoratorAndBridge(unittest.TestCase):
+    def test_renderer_decorators_draw_extra_layers(self) -> None:
+        canvas = FakeCanvas()
+        base = TkBaseClockRenderer()
         renderer = CenterDotDecorator(ShadowLayerDecorator(base))
         settings = AppSettings(enable_shadow_layer=True, enable_center_dot_layer=True)
-        svg = renderer.render(state, settings)
-        self.assertIn("<svg", svg)
-        self.assertIn("filter=\"url(#shadow)\"", svg)
-        self.assertIn("<circle", svg)
-
-    def test_bridge_presenter_renders_svg(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp:
-            db_path = os.path.join(tmp, "app.db")
-            repo = CachedSettingsRepositoryProxy(SQLiteSettingsRepository(Database(db_path)))
-            engine = ClockEngine()
-            service = ClockService(engine=engine, settings_repo=repo)
-            renderer = CenterDotDecorator(SvgClockRenderer())
-
-            presenter = ClockPresenter(clock_service=service, renderer=renderer)
-            settings = repo.get_settings()
-            svg = presenter.render(settings)
-            self.assertIn("<svg", svg)
+        state = ClockState(angles=ClockAngles(hour=0.0, minute=0.0, second=0.0), ticks=tuple())
+        renderer.render(canvas, state, settings, size=320)
+        self.assertGreaterEqual(canvas.ovals, 2)
 
 
 class TestFacade(unittest.TestCase):
-    def test_facade_renders_svg(self) -> None:
+    def test_facade_applies_patch(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             db_path = os.path.join(tmp, "app.db")
-            repo = CachedSettingsRepositoryProxy(SQLiteSettingsRepository(Database(db_path)))
+            db = Database(db_path)
+
+            settings_repo = CachedSettingsRepositoryProxy(SQLiteSettingsRepository(db))
+            presets_repo = SQLitePresetRepository(db)
+            settings_service = SettingsService(settings_repo)
+            preset_service = PresetService(presets=presets_repo, settings=settings_repo)
+
+            from analog_clock_app.domain.clock.engine import ClockEngine
+
             engine = ClockEngine()
-            service = ClockService(engine=engine, settings_repo=repo)
-            renderer = SvgClockRenderer()
-            facade = ClockFacade(clock_service=service, settings_repo=repo, renderer=renderer)
-            svg = facade.render_clock_svg()
-            self.assertIn("<svg", svg)
+            clock_service = ClockService(engine=engine, settings_repo=settings_repo)
+            history = HistoryService()
+
+            facade = AppFacade(
+                clock_service=clock_service,
+                settings_service=settings_service,
+                preset_service=preset_service,
+                history=history,
+            )
+
+            updated = facade.apply_settings_patch(SettingsPatch(time_mode="simulated"), "Test")
+            self.assertEqual(updated.time_mode, "simulated")
 
 
 if __name__ == "__main__":
